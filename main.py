@@ -43,9 +43,5 @@ def text_game():
     board.pretty_print()
     print('Player', board.winner, 'Wins!')
 
-# I'm just going to store these here for now
-# https://www.maths.ed.ac.uk/~csangwin/hex/index.html
-# http://vanshel.com/Hexy/
-
 if __name__ == '__main__':
     text_game()
