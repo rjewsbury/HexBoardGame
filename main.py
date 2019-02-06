@@ -1,5 +1,5 @@
 from board import HexBoard
-from player import TextPlayer, RandomPlayer
+from player import TextPlayer, RandomPlayer, ChargeHeuristicPlayer
 import time
 
 
@@ -19,15 +19,17 @@ def text_game():
     player = [None, None, None]
     for i in range(1,len(player)):
         player_type = -1
-        while not (0 <= player_type <= 1):
+        while not (0 <= player_type <= 2):
             try:
-                player_type = int(input('0 - Text\n1 - Random (AI)\nplayer %d type?: ' % (i)))
+                player_type = int(input('0 - Text\n1 - Random (AI)\n2 - Charge Heuristic (AI)\nplayer %d type?: ' % (i)))
             except ValueError:
                 pass
         if player_type == 0:
             player[i] = TextPlayer(1)
         elif player_type == 1:
             player[i] = RandomPlayer()
+        elif player_type == 2:
+            player[i] = ChargeHeuristicPlayer()
 
     board = HexBoard(size, swap)
 
