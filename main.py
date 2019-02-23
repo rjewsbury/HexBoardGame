@@ -31,7 +31,11 @@ def text_game():
         elif player_type == 1:
             player[i] = RandomPlayer(i)
         elif player_type == 2:
-            player[i] = AlphaBetaPlayer(i)
+            use_h = False
+            while use_h not in ('y', 'n'):
+                use_h = input('use heuristic sort? (y/n): ')
+                # use_h = 'n'
+            player[i] = AlphaBetaPlayer(i, (use_h == 'y'))
         elif player_type == 3:
             player[i] = ChargeHeuristicPlayer(i)
 

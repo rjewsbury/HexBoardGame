@@ -7,6 +7,7 @@ import random
 import itertools
 from abc import ABC, abstractmethod
 from math import inf
+from board import SWAP_MOVE
 
 # a player interface
 class Player(ABC):
@@ -60,6 +61,10 @@ class RandomPlayer(ComputerPlayer):
 # uses bounded min-max tree search with alpha beta pruning
 minimax_search_depth = 3
 class AlphaBetaPlayer(ComputerPlayer):
+    def __init__(self, player_num, use_heuristic_sort):
+        super(AlphaBetaPlayer, self).__init__(player_num)
+        self.use_heuristic_sort = use_heuristic_sort
+
     @staticmethod
     def heuristic(board):
         if board.winner != 0:
@@ -72,14 +77,14 @@ class AlphaBetaPlayer(ComputerPlayer):
             return p2_dist - p1_dist
 
     def move(self, board):
-        val, move = self.alpha_beta(board, minimax_search_depth, -inf, inf, self.player_num, debug = True)
+        val, move = self.alpha_beta(board, minimax_search_depth, -inf, inf, self.player_num)
         print(val)
         if move is None:
             board.resign()
         else:
             board.play(*move)
 
-    def alpha_beta(self, board, depth, alpha, beta, player, debug=False, states=None):
+    def alpha_beta(self, board, depth, alpha, beta, player, states=None):
         if states is None:
             states = dict()
         if depth == 0 or board.winner != 0:
@@ -87,9 +92,14 @@ class AlphaBetaPlayer(ComputerPlayer):
             return self.heuristic(board), None
 
         # make a generator for all options
-        options = ((y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0)
+        options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
         if board.swap_rule and len(board.move_list) == 1:
-            options = itertools.chain((board.move_list[0],),options)
+            # options = itertools.chain((board.move_list[0],),options)
+            options.append(SWAP_MOVE)
+
+        if self.use_heuristic_sort:
+            curve_board = ChargeHeuristicPlayer.curve_board(board)
+            options.sort(key=lambda m: 0 if m == SWAP_MOVE else curve_board[m[0]][m[1]])
 
         # player 1 tries to maximize the board value, player 2 tries to minimize it
         value = -inf if player == 1 else inf
@@ -170,28 +180,33 @@ class ChargeHeuristicPlayer(ComputerPlayer):
             # upwards or downwards curve
             return (h1-h2)+(h3-h2)
         else:
-            # curved slope
+            # other curved shapes are not evaluatable
             return 0
 
-    def move(self, board):
-        charge = self.base_charge(board.size)
+    @staticmethod
+    def curve_board(board):
+        charge = ChargeHeuristicPlayer.base_charge(board.size)
         for y, x in itertools.product(range(board.size), repeat=2):
             if board[y][x] != 0:
                 sign = 1 if board[y][x] == 1 else -1
-                ChargeHeuristicPlayer.add_charge(sign, charge, x,y)
-
+                ChargeHeuristicPlayer.add_charge(sign, charge, x, y)
         # for row in charge:
         #     print(list((('%.4f'%x) if x >= 0 else ('%.3f'%x) for x in row)))
+        curve = [[0]*board.size for i in range(board.size)]
+        for y, x in itertools.product(range(1,board.size+1), repeat=2):
+            k_e_w = ChargeHeuristicPlayer.curve(charge[y][x-1], charge[y][x], charge[y][x+1])
+            k_ne_sw = ChargeHeuristicPlayer.curve(charge[y+1][x-1], charge[y][x], charge[y-1][x+1])
+            k_nw_se = ChargeHeuristicPlayer.curve(charge[y+1][x], charge[y][x], charge[y-1][x])
+            curve[y-1][x-1] = min(k_e_w, k_ne_sw, k_nw_se) * max(k_e_w, k_ne_sw, k_nw_se)
+            # print('%.3f'%curve[y-1][x-1], end=',' if x < board.size else '\n')
+        return curve
 
+    def move(self, board):
+        curve = ChargeHeuristicPlayer.curve_board(board)
         move = (-1, -1)
         move_curvature = inf
-        for y, x in itertools.product(range(1,board.size+1), repeat=2):
-            k_e_w = self.curve(charge[y][x-1], charge[y][x], charge[y][x+1])
-            k_ne_sw = self.curve(charge[y+1][x-1], charge[y][x], charge[y-1][x+1])
-            k_nw_se = self.curve(charge[y+1][x], charge[y][x], charge[y-1][x])
-            curvature = min(k_e_w, k_ne_sw, k_nw_se) * max(k_e_w, k_ne_sw, k_nw_se)
-            # print('%.3f'%curvature, end=',' if x < board.size else '\n')
-            if curvature < move_curvature and board[y-1][x-1] == 0:
-                move = (y-1,x-1)
-                move_curvature = curvature
+        for y, x in itertools.product(range(0,board.size), repeat=2):
+            if curve[y][x] < move_curvature and board[y][x] == 0:
+                move = (y,x)
+                move_curvature = curve[y][x]
         board.play(*move)
