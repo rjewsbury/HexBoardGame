@@ -1,7 +1,5 @@
 from board import HexBoard
 from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer
-import time
-
 
 def text_game():
     size = -1
@@ -19,9 +17,9 @@ def text_game():
     swap = (swap == 'y')
 
     player = [None, None, None]
+    # auto_types = iter((2, 3))
     for i in range(1,len(player)):
         player_type = -1
-        # auto_types = iter((2, 3))
         while not (0 <= player_type <= 3):
             try:
                 player_type = int(input('0 - Text\n1 - Random (AI)\n2 - Alpha-Beta Search (AI)\n3 - Charge Heuristic (AI)\nplayer %d type?: ' % (i)))

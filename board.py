@@ -32,6 +32,10 @@ class HexBoard:
     def __getitem__(self, item):
         return self.board[item]
 
+    # to use the board as a dictionary key, get its board state in a tuple
+    def hashable(self):
+        return tuple((tuple(row) for row in self.board))
+
     # treat the winner as a property so that it is only checked when we need to
     @property
     def winner(self):

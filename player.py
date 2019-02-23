@@ -58,6 +58,7 @@ class RandomPlayer(ComputerPlayer):
         board.play(*move)
 
 # uses bounded min-max tree search with alpha beta pruning
+minimax_search_depth = 3
 class AlphaBetaPlayer(ComputerPlayer):
     @staticmethod
     def heuristic(board):
@@ -71,14 +72,16 @@ class AlphaBetaPlayer(ComputerPlayer):
             return p2_dist - p1_dist
 
     def move(self, board):
-        val, move = self.alpha_beta(board, 2, -inf, inf, self.player_num, debug = True)
+        val, move = self.alpha_beta(board, minimax_search_depth, -inf, inf, self.player_num, debug = True)
         print(val)
         if move is None:
             board.resign()
         else:
             board.play(*move)
 
-    def alpha_beta(self, board, depth, alpha, beta, player, debug=False):
+    def alpha_beta(self, board, depth, alpha, beta, player, debug=False, states=None):
+        if states is None:
+            states = dict()
         if depth == 0 or board.winner != 0:
             # if we've reached the end, there is no move to make
             return self.heuristic(board), None
@@ -93,7 +96,12 @@ class AlphaBetaPlayer(ComputerPlayer):
         best_move = None
         for move in options:
             board.play(*move)
-            move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, 3-player)
+            board_state = board.hashable()
+            if board_state in states:
+                move_val = states[board_state]
+            else:
+                move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, 3-player, states=states)
+                states[board_state] = move_val
             if player == 1:
                 if move_val > value:
                     value = move_val
