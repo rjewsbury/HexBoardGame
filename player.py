@@ -1,3 +1,8 @@
+"""
+A collection of implementations of the Player class
+Maybe these should be separated into their own files?
+"""
+
 import random
 import itertools
 from abc import ABC, abstractmethod
@@ -5,6 +10,10 @@ from math import inf
 
 # a player interface
 class Player(ABC):
+    def __init__(self, player_num):
+        super(Player, self).__init__()
+        self.player_num = player_num
+
     # gives the player a board state, and asks them to make a move
     @abstractmethod
     def move(self, board):
@@ -16,10 +25,18 @@ class Player(ABC):
         pass
 
 
-class TextPlayer(Player):
-    def __init__(self, player_id=0):
-        self.player_id = player_id
+# abstract classes to keep behaviour common to all humans or bots
+class HumanPlayer(Player, ABC):
+    def is_human(self):
+        return True
 
+
+class ComputerPlayer(Player, ABC):
+    def is_human(self):
+        return False
+
+
+class TextPlayer(HumanPlayer):
     def move(self, board):
         user = input('row, col (or "resign"/"undo"): ')
         try:
@@ -32,11 +49,7 @@ class TextPlayer(Player):
                 board.undo()
                 board.undo()
 
-    def is_human(self):
-        return True
-
-
-class RandomPlayer(Player):
+class RandomPlayer(ComputerPlayer):
     def move(self, board):
         options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
         if board.swap_rule and len(board.move_list) == 1:
@@ -44,12 +57,63 @@ class RandomPlayer(Player):
         move = random.choice(options)
         board.play(*move)
 
-    def is_human(self):
-        return False
+# uses bounded min-max tree search with alpha beta pruning
+class AlphaBetaPlayer(ComputerPlayer):
+    @staticmethod
+    def heuristic(board):
+        if board.winner != 0:
+            # player 1 gives inf, player 2 gives -inf
+            return (3-2*board.winner)*inf
+        else:
+            # find the player that's closer to winning
+            p1_dist, _ = board.remaining_distance(1)
+            p2_dist, _ = board.remaining_distance(2)
+            return p2_dist - p1_dist
+
+    def move(self, board):
+        val, move = self.alpha_beta(board, 2, -inf, inf, self.player_num, debug = True)
+        print(val)
+        if move is None:
+            board.resign()
+        else:
+            board.play(*move)
+
+    def alpha_beta(self, board, depth, alpha, beta, player, debug=False):
+        if depth == 0 or board.winner != 0:
+            # if we've reached the end, there is no move to make
+            return self.heuristic(board), None
+
+        # make a generator for all options
+        options = ((y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0)
+        if board.swap_rule and len(board.move_list) == 1:
+            options = itertools.chain((board.move_list[0],),options)
+
+        # player 1 tries to maximize the board value, player 2 tries to minimize it
+        value = -inf if player == 1 else inf
+        best_move = None
+        for move in options:
+            board.play(*move)
+            move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, 3-player)
+            if player == 1:
+                if move_val > value:
+                    value = move_val
+                    best_move = move
+                alpha = max(alpha, value)
+            else:
+                if move_val < value:
+                    value = move_val
+                    best_move = move
+                beta = min(beta, value)
+            board.undo()
+            if alpha >= beta:
+                break
+        return value, best_move
 
 
+# this player is a mess. They try to find "saddle points" in the distance function
+# on the board to signify that
 _max_charge = 9
-class ChargeHeuristicPlayer(Player):
+class ChargeHeuristicPlayer(ComputerPlayer):
 
     @staticmethod
     def base_charge(size):
@@ -123,6 +187,3 @@ class ChargeHeuristicPlayer(Player):
                 move = (y-1,x-1)
                 move_curvature = curvature
         board.play(*move)
-
-    def is_human(self):
-        return False

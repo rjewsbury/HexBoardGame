@@ -1,3 +1,9 @@
+"""
+A data structure used to represent an arbitrary hex game state
+"""
+from math import inf
+from heapq import heappop, heappush
+
 # constants:
 # the code used to represent a swap
 SWAP_MOVE = (-1, -1)
@@ -18,13 +24,26 @@ class HexBoard:
         # the player with the next move. either 1 or 2
         self.turn = 1
         # the player that's won the game
-        self.winner = 0
+        self._winner = 0
         # the group of stones that connect the sides
-        self.winning_group = None
+        self._winning_group = None
 
     # for convenience, treat indexing on the hex board as indexing on the board itself
     def __getitem__(self, item):
         return self.board[item]
+
+    # treat the winner as a property so that it is only checked when we need to
+    @property
+    def winner(self):
+        if self._winner is None:
+            self._update_winner()
+        return self._winner
+
+    @property
+    def winning_group(self):
+        if self._winner is None:
+            self._update_winner()
+        return self._winning_group
 
     # checks if a given position is on the board
     def in_bounds(self, row, col):
@@ -44,8 +63,8 @@ class HexBoard:
             self.move_list.append((row, col))
             self.turn = (self.turn % 2) + 1
             moved = True
-            # check if somebody won
-            self._update_winner()
+            # in this new board state, we don't know if somebody's won
+            self._winner = None
 
         # if swapping is allowed and it's player 2's first move, they can take player 1's first move
         elif self.swap_rule and len(self.move_list) == 1 and (
@@ -60,9 +79,11 @@ class HexBoard:
 
         return moved
 
+    # removes the most recent move
     def undo(self):
-        self.winner = 0
-        self.winning_group = None
+        # if the last move won, then we need to clear the result
+        self._winner = 0
+        self._winning_group = None
         self.turn = (self.turn % 2) + 1
         row, col = self.move_list.pop()
         if (row, col) == SWAP_MOVE:
@@ -72,69 +93,90 @@ class HexBoard:
         else:
             self.board[row][col] = 0
 
+    # sets the winner of the match
     def resign(self):
-        self.winner = (self.turn % 2) + 1
+        self._winner = (self.turn % 2) + 1
 
-    def _update_winner(self):
-        checked = [[False] * self.size for _ in range(self.size)]
-
-        def connect_right(row, col):
-            return col == self.size - 1
-
-        # check for a player 1 win
-        for row in range(self.size):
-            # if a cell on the left is connected to the right side, player 1 wins
-            connected, group = self._follow_connection(1, row, 0, checked, connect_right)
-            if connected:
-                if group is not None:
-                    self.winning_group = group
-                self.winner = 1
-                return
-
-        def connect_bottom(row, col):
-            return row == self.size - 1
-
-        # check for a player 2 win
-        for col in range(self.size):
-            # if a cell on the top is connected to the bottom, player 2 wins
-            connected, group = self._follow_connection(2, 0, col, checked, connect_bottom)
-            if connected:
-                if group is not None:
-                    self.winning_group = group
-                self.winner = 2
-                return
-
-        # otherwise, nobody has won
-        self.winner = 0
-        self.winning_group = None
-
-    def _follow_connection(self, player, start_row, start_col, checked, stop_condition=(lambda r, c: False)):
-        # if this isn't the start of a new chain, dont spend time checking
-        if self.board[start_row][start_col] != player or checked[start_row][start_col]:
-            return False, None
-
-        connected_group = {(start_row, start_col)}
-
-        if stop_condition(start_row, start_col):
-            return True, connected_group
-
-        search_queue = [(start_row, start_col)]
-        checked[start_row][start_col] = True
-
-        while search_queue:
-            y1, x1 = search_queue.pop(0)
+    # checks how much further a player has to go to connect.
+    # if max is set, the search will stop early if the distance reaches max
+    def remaining_distance(self, player, max=0):
+        # search ordered by min distance, intended direction, then perpendicular direction
+        searchq = [(0, self.size, i) for i in range(self.size)]
+        # the open set for adjacent cells
+        parent = dict()
+        # track the distance travelled
+        dist = -1
+        # track the last cell visited
+        row, col = -1, -1
+        connected = False
+        while searchq:
+            if player == 1:  # player 1 is travelling left-right, so the intended direction is the column number
+                dist, col, row = heappop(searchq)
+                if col == 0:  # if we visit a cell in column 0, we'vereached the other side
+                    connected = True
+                    break
+            else:  # player 2 is travelling up-down, so the intended direction is the row number
+                dist, row, col = heappop(searchq)
+                if row == 0:  # if we visit a cell in row 0, we've reached the other side
+                    connected = True
+                    break
+            # cut the search if we've reached the max
+            if max and dist >= max:
+                break
             for dy, dx in ADJACENT:
-                y2, x2 = (y1 + dy), (x1 + dx)
-                # if we find a connected stone, check if we're connected, and add it to the queue
-                if self.in_bounds(y2, x2) and self.board[y2][x2] == player and not checked[y2][x2]:
-                    connected_group.add((y2, x2))
-                    if stop_condition(y2, x2):
-                        return True, connected_group
+                next_row = row + dy
+                next_col = col + dx
+                try:
+                    if next_row < 0 or next_col < 0:
+                        continue
+                    else:
+                        board_val = self.board[next_row][next_col]
+                except IndexError:
+                    # if the position is not a legal board position, move on. faster than calling in-bounds
+                    continue
+                # if it's a cell that hasnt been checked, and doesnt belong to the other player, check it
+                if board_val != (3 - player) \
+                        and (next_row, next_col) not in parent:
+                    cost = dist
+                    # if the cell is empty, it will take a move to go to it
+                    if board_val == 0:
+                        cost += 1
+                    parent[(next_row, next_col)] = (row, col)
+                    # to keep the sort order based on the intended direction, put it first
+                    if player == 1:
+                        heappush(searchq, (cost, col + dx, row + dy))
+                    else:
+                        heappush(searchq, (cost, row + dy, col + dx))
+        # once the search is finished, build the list of the shortest path
+        if connected:
+            pos = (row, col)
+            winning_group = []
+            while pos in parent:
+                winning_group.append(pos)
+                pos = parent[pos]
+            return dist, winning_group
+        # if the search ended because the max was exceeded, there is no winning group
+        elif max and dist >= max:
+            return dist, None
+        # if there is no way to reach the other side, treat it as infinite distance
+        else:
+            return inf, None
 
-                    search_queue.append((y2, x2))
-                    checked[y2][x2] = True
-        # if the queue empties, we didn't find the stop condition
-        return False, None
+    # checks if either player has won
+    def _update_winner(self):
+        disconnected, group = self.remaining_distance(1, max=1)
+        if not disconnected:
+            self._winner = 1
+            self._winning_group = group
+            return
+        disconnected, group = self.remaining_distance(2, max=1)
+        if not disconnected:
+            self._winner = 2
+            self._winning_group = group
+            return
+
+        self._winner = 0
+        self._winning_group = None
 
     def pretty_print(self):
         # spacing should be odd for things to be consistent
@@ -152,9 +194,11 @@ class HexBoard:
                     string += ' ' * (spacing - 1) + '['
                 elif self.winning_group and (i,j-1) in self.winning_group:
                     string += ']' + ' ' * (spacing - 1)
-                elif self.move_list and self.move_list[-1] == (i,j):
+                elif self.move_list and (self.move_list[-1] == (i,j) or
+                        (self.move_list[-1] == SWAP_MOVE and self.move_list[-2] == (i,j))):
                     string += ' ' * (spacing - 1) + '('
-                elif self.move_list and self.move_list[-1] == (i,j-1):
+                elif self.move_list and (self.move_list[-1] == (i,j-1) or
+                        (self.move_list[-1] == SWAP_MOVE and self.move_list[-2] == (i,j-1))):
                     string += ')' + ' ' * (spacing - 1)
                 else:
                     string += ' ' * spacing
