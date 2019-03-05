@@ -110,9 +110,9 @@ class AlphaBetaPlayer(ComputerPlayer):
             if board_state in self.transposition_table:
                 move_val = self.transposition_table[board_state]
             else:
-                move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, 3-player)
+                move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, -player)
                 self.transposition_table[board_state] = move_val
-            if player == 1:
+            if player > 0:
                 if move_val > value:
                     value = move_val
                     best_move = move

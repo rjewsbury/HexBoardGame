@@ -12,10 +12,9 @@ class Heuristic(ABC):
     # gets the value of a given board state
     # if a player has won, the board value is maximally positive or negative
     def get_value(self, board):
-        if board.winner == 1:
-            return inf
-        if board.winner == 2:
-            return -inf
+        # either the positive player or negative player won
+        if board.winner != 0:
+            return board.winner * inf
         else:
             return 0
 
@@ -38,14 +37,12 @@ class Heuristic(ABC):
 
 class ShortestPathHeuristic(Heuristic):
     def get_value(self, board):
-        if board.winner == 1:
-            return inf
-        elif board.winner == 2:
-            return -inf
+        if board.winner != 0:
+            return board.winner * inf
         else:
             # find the player that's closer to winning
             p1_dist, _ = board.remaining_distance(1)
-            p2_dist, _ = board.remaining_distance(2)
+            p2_dist, _ = board.remaining_distance(-1)
             return p2_dist - p1_dist
 
 

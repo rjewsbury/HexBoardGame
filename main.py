@@ -20,7 +20,7 @@ def text_game():
 
     player = [None, None, None]
     # auto_types = iter((2, 3))
-    for i in range(1,len(player)):
+    for i in (1,-1):
         player_type = -1
         while not (0 <= player_type <= 3):
             try:
@@ -52,7 +52,7 @@ def text_game():
 
     while board.winner == 0:
         board.pretty_print()
-        print('Player', board.turn, 'to move')
+        print('Player', (3-board.turn)//2, 'to move')
         player[board.turn].move(board)
 
         # if both players are bots, slow down the game
@@ -60,7 +60,7 @@ def text_game():
             pass # time.sleep(1)
 
     board.pretty_print()
-    print('Player', board.winner, 'Wins!')
+    print('Player', (3-board.winner)//2, 'Wins!')
 
 def main():
     # text_game()

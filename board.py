@@ -15,13 +15,13 @@ class HexBoard:
     def __init__(self, size=11, swap_rule=False):
         # the width and height of the board
         self.size = size
-        # 0 means empty, 1 means a player 1 piece, 2 means a player 2 piece
+        # 0 means empty, 1 means a player 1 piece, -1 means a player 2 piece
         self.board = [[0] * size for _ in range(size)]
         # a rule that allows the second player to "swap places" as their first move
         self.swap_rule = swap_rule
         # a history of moves made.
         self.move_list = []
-        # the player with the next move. either 1 or 2
+        # the player with the next move. either 1 or -1
         self.turn = 1
         # the player that's won the game
         self._winner = 0
@@ -58,14 +58,14 @@ class HexBoard:
         moved = False
 
         # cant move if somebody already won
-        if self.winner > 0:
+        if self.winner != 0:
             return moved
 
         # if there's no move there already, its valid
         if self.in_bounds(row, col) and self.board[row][col] is 0:
             self.board[row][col] = self.turn
             self.move_list.append((row, col))
-            self.turn = (self.turn % 2) + 1
+            self.turn *= -1
             moved = True
             # in this new board state, we don't know if somebody's won
             self._winner = None
@@ -76,9 +76,9 @@ class HexBoard:
             # we mirror it across the board to make it seem like the players switched
             row, col = self.move_list[0]
             self.board[row][col] = 0
-            self.board[col][row] = 2
+            self.board[col][row] = -1
             self.move_list.append(SWAP_MOVE)
-            self.turn = (self.turn % 2) + 1
+            self.turn *= -1
             moved = True
 
         return moved
@@ -88,7 +88,7 @@ class HexBoard:
         # if the last move won, then we need to clear the result
         self._winner = 0
         self._winning_group = None
-        self.turn = (self.turn % 2) + 1
+        self.turn *= -1
         row, col = self.move_list.pop()
         if (row, col) == SWAP_MOVE:
             row, col = self.move_list[0]
@@ -99,7 +99,7 @@ class HexBoard:
 
     # sets the winner of the match
     def resign(self):
-        self._winner = (self.turn % 2) + 1
+        self._winner = -self.turn
 
     # checks how much further a player has to go to connect.
     # if max is set, the search will stop early if the distance reaches max
@@ -139,7 +139,7 @@ class HexBoard:
                     # if the position is not a legal board position, move on. faster than calling in-bounds
                     continue
                 # if it's a cell that hasnt been checked, and doesnt belong to the other player, check it
-                if board_val != (3 - player) \
+                if board_val != -player \
                         and (next_row, next_col) not in parent:
                     cost = dist
                     # if the cell is empty, it will take a move to go to it
@@ -173,9 +173,9 @@ class HexBoard:
             self._winner = 1
             self._winning_group = group
             return
-        disconnected, group = self.remaining_distance(2, max=1)
+        disconnected, group = self.remaining_distance(-1, max=1)
         if not disconnected:
-            self._winner = 2
+            self._winner = -1
             self._winning_group = group
             return
 
@@ -209,6 +209,8 @@ class HexBoard:
 
                 if num == 0:
                     string += '·'
+                elif num < 0:
+                    string += '2'
                 else:
                     string += str(num)
             if self.winning_group and (i,self.size-1) in self.winning_group:
