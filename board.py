@@ -188,9 +188,9 @@ class HexBoard:
         string = '\n' + ' ' * (2 + (spacing + 1) // 2)
         for i in range(self.size):
             string += ('{:' + str(spacing + 1) + '}').format(str(i + 1) + ':')
-        string += '\n' + ' ' * (3 + (spacing + 1) // 2) + ('2' + ' ' * spacing) * self.size
+        string += '\n' + ' ' * (3 + (spacing + 1) // 2) + ('□' + ' ' * spacing) * self.size
         for i, row in enumerate(self.board):
-            string += ('\n' + '{:>' + str(2 + i * (spacing + 1) // 2) + '} 1').format(str(i + 1) + ':')
+            string += ('\n' + '{:>' + str(2 + i * (spacing + 1) // 2) + '} ■').format(str(i + 1) + ':')
             for j, num in enumerate(row):
                 if self.winning_group and (i,j) in self.winning_group and (i,j-1) in self.winning_group:
                     string += ']' + ' ' * (spacing - 2) + '['
@@ -210,15 +210,15 @@ class HexBoard:
                 if num == 0:
                     string += '·'
                 elif num < 0:
-                    string += '2'
+                    string += '○'
                 else:
-                    string += str(num)
+                    string += '●'
             if self.winning_group and (i,self.size-1) in self.winning_group:
                 string += ']' + ' ' * (spacing-1)
             elif self.move_list and self.move_list[-1] == (i, self.size-1):
                 string += ')' + ' ' * (spacing-1)
             else:
                 string += ' ' * spacing
-            string += '1'
-        string += '\n' + ' ' * (4 + self.size * (spacing + 1) // 2) + (' ' * spacing + '2') * self.size
+            string += '■'
+        string += '\n' + ' ' * (4 + self.size * (spacing + 1) // 2) + (' ' * spacing + '□') * self.size
         print(string)

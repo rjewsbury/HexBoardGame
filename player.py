@@ -67,7 +67,6 @@ class AlphaBetaPlayer(ComputerPlayer):
     def __init__(self, player_num, board_size, search_depth, use_heuristic_sort):
         super(AlphaBetaPlayer, self).__init__(player_num)
         self.search_depth = search_depth
-        self.transposition_table = None
         self.heuristic = ShortestPathHeuristic()
         if use_heuristic_sort:
             self.sorter = ChargeHeuristic(board_size)
@@ -75,16 +74,16 @@ class AlphaBetaPlayer(ComputerPlayer):
             self.sorter = None
 
     def move(self, board):
-        # clear the transposition table from the previous search, because the new table will use deeper values
-        self.transposition_table = dict()
-        val, move = self.alpha_beta(board, self.search_depth, -inf, inf, self.player_num)
+        transposition_table = dict()
+        val, move = self.alpha_beta(board, self.search_depth, -inf, inf, self.player_num, transposition_table)
+        # val, move = self.MTD_f(board, self.heuristic.get_value(board)+self.player_num, self.search_depth)
         print(val)
         if move is None:
             board.resign()
         else:
             board.play(*move)
 
-    def alpha_beta(self, board, depth, alpha, beta, player):
+    def alpha_beta(self, board, depth, alpha, beta, player, transposition_table):
         if depth == 0 or board.winner != 0:
             # if we've reached the end, there is no move to make
             return self.heuristic.get_value(board), None
@@ -107,11 +106,11 @@ class AlphaBetaPlayer(ComputerPlayer):
         for move in options:
             board.play(*move)
             board_state = board.hashable()
-            if board_state in self.transposition_table:
-                move_val = self.transposition_table[board_state]
+            if board_state in transposition_table:
+                move_val = transposition_table[board_state]
             else:
-                move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, -player)
-                self.transposition_table[board_state] = move_val
+                move_val, _ = self.alpha_beta(board, depth-1, alpha, beta, -player, transposition_table)
+                transposition_table[board_state] = move_val
             if player > 0:
                 if move_val > value:
                     value = move_val
@@ -126,6 +125,23 @@ class AlphaBetaPlayer(ComputerPlayer):
             if alpha >= beta:
                 break
         return value, best_move
+
+    # a supposed efficiency improvement on the minimax search algorithm that uses 0-width alpha beta calls
+    # makes the players choose different moves than regular alpha-beta depending on the initial guess?
+    # might not use.
+    def MTD_f(self, board, guess, depth):
+        upper = inf
+        lower = -inf
+        val = guess
+        while lower < upper:
+            bound = max(val, lower + 1)
+            self.transposition_table = dict()
+            val, move = self.alpha_beta(board, depth, bound - 1, bound, self.player_num)
+            if val < bound:
+                upper = val
+            else:
+                lower = val
+        return val, move
 
 
 # this player is a mess. They try to find "saddle points" in the distance function
