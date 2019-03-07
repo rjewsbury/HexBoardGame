@@ -3,15 +3,18 @@ A collection of heuristic functions,
 used by players to evaluate board positions
 """
 import itertools
+import math
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from math import inf
+
+from board import SWAP_MOVE
 
 
 class Heuristic(ABC):
     # gets the value of a given board state
     # if a player has won, the board value is maximally positive or negative
-    def get_value(self, board):
+    def get_value(self, board, debug=False):
         # either the positive player or negative player won
         if board.winner != 0:
             return board.winner * inf
@@ -20,7 +23,7 @@ class Heuristic(ABC):
 
     # gets an array of heuristic values for every position on the board
     # intended to be used to sort options
-    def get_child_values(self, board):
+    def get_child_values(self, board, debug=False):
         # if the game is over, no moves can be made
         if board.winner != 0:
             value = self.get_value(board)
@@ -36,7 +39,7 @@ class Heuristic(ABC):
 
 
 class ShortestPathHeuristic(Heuristic):
-    def get_value(self, board):
+    def get_value(self, board, debug=False):
         if board.winner != 0:
             return board.winner * inf
         else:
@@ -46,6 +49,43 @@ class ShortestPathHeuristic(Heuristic):
             return p2_dist - p1_dist
 
 
+class TwoDistanceHeuristic(Heuristic):
+    def get_value(self, board, debug=False):
+        if board.winner != 0:
+            return board.winner * inf
+        else:
+            # find the player that's closer to winning
+            p1_dist, _ = board.remaining_distance(1, min_neighbors=2, debug=debug)
+            p2_dist, _ = board.remaining_distance(-1, min_neighbors=2, debug=debug)
+            val = p2_dist - p1_dist
+            # if a player does not have a 2-distance path, pick a high finite number, so we dont confuse it with a
+            # definite win or a definite loss
+            if math.isinf(val):
+                return math.copysign(10000, val)
+            if math.isnan(val):
+                # if neither player has a path to their opposite side, we get nan
+                # in this rare case, revert to normal distance
+                p1_dist, _ = board.remaining_distance(1)
+                p2_dist, _ = board.remaining_distance(-1)
+                val = p2_dist - p1_dist
+            return val
+
+
+class PastResultHeuristic(Heuristic):
+    def __init__(self, results, fallback=None):
+        self.results = results
+        self.fallback = fallback
+
+    def get_value(self, board, debug=False):
+        board_hash = board.hashable()
+        if board_hash in self.results:
+            return self.results[board_hash][0]
+        elif self.fallback:
+            return self.fallback.get_value(board)
+        else:
+            return super(PastResultHeuristic, self).get_value(board)
+
+
 class ChargeHeuristic(Heuristic):
     _max_charge = 9
 
@@ -53,14 +93,34 @@ class ChargeHeuristic(Heuristic):
         super(ABC, self).__init__()
         self._base_charge = self.base_charge(size)
         self.size = size
+        self.states = []
 
     # finds an approximation of "curvature" if the board was an electric field
-    def get_child_values(self, board):
-        charge = deepcopy(self._base_charge)
-        for y, x in itertools.product(range(board.size), repeat=2):
-            if board[y][x] != 0:
-                sign = 1 if board[y][x] == 1 else -1
-                ChargeHeuristic.add_charge(sign, charge, x, y)
+    def get_child_values(self, board, debug=False):
+        same_moves = 0
+        for move, state in zip(board.move_list, self.states):
+            if move == state[0][-1]:
+                same_moves += 1
+        if same_moves == 0:
+            charge = deepcopy(self._base_charge)
+        else:
+            charge = deepcopy(self.states[same_moves-1][1])
+        # remove the incorrect values
+        self.states = self.states[:same_moves]
+
+        for i in range(same_moves, len(board.move_list)):
+            y, x = board.move_list[i]
+            # if they swapped, clear the board and mirror the first move
+            if (y,x) == SWAP_MOVE:
+                charge = deepcopy(self._base_charge)
+                x, y = board.move_list[0]
+            ChargeHeuristic.add_charge(board[y][x], charge, x, y)
+
+            self.states.append((board.move_list[:i+1], charge))
+            # copy the board so the one stored isnt modified
+            if i+1 < len(board.move_list):
+                charge = deepcopy(charge)
+
         # for row in charge:
         #     print(list((('%.4f'%x) if x >= 0 else ('%.3f'%x) for x in row)))
         curve = [[0] * board.size for i in range(board.size)]
