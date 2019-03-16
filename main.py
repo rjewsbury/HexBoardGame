@@ -27,8 +27,8 @@ def text_game(use_default = False):
         player = [None]*3
     else:
         player = [None,
-                  AlphaBetaPlayer(1, ShortestPathHeuristic(), 2, sorter=ChargeHeuristic(size)),
-                  AlphaBetaPlayer(-1, ShortestPathHeuristic(), 2, sorter=ChargeHeuristic(size))]
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size))]
     for i in (1,-1):
         if player[i] is not None:
             continue
@@ -54,11 +54,12 @@ def text_game(use_default = False):
         player[board.turn].move(board)
 
         # if both players are bots, slow down the game
-        if not (player[1].is_human() or player[2].is_human()):
-            pass # time.sleep(1)
+        # if not (player[1].is_human() or player[2].is_human()):
+        #     time.sleep(1)
 
     board.pretty_print()
     print('Player', board.winner%3, 'Wins!')
+
 
 def build_alpha_beta_player(player_num, size):
     heuristic_type = -1

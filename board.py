@@ -101,46 +101,30 @@ class HexBoard:
     def resign(self):
         self._winner = -self.turn
 
-    # checks how much further a player has to go to connect.
-    # if max is set, the search will stop early if the distance reaches max
-    # if min_neighbors is set, nodes will only be searched if they have at least that many neighbors already searched
-    def remaining_distance(self, player, max=0, min_neighbors=1, debug=False):
-        # search ordered by min distance, intended direction, then perpendicular direction
-        searchq = [(0, self.size, i) for i in range(-1,self.size)]
-        neighbor_count = [[0]*self.size for _ in range(self.size)]
+    # checks if a player has made a connection between their walls
+    def is_connected(self, player, debug=False):
+        # search ordered by intended direction
+        if player == 1:
+            searchq = [(self.size, i, self.size) for i in range(self.size-1)]
+        else:
+            searchq = [(self.size, self.size, i) for i in range(self.size-1)]
         if debug: dist_grid = [['-'] * self.size for _ in range(self.size)]
         # the open set for adjacent cells
         parent = dict()
-        # track the distance travelled
-        dist = -1
         # track the last cell visited
         row, col = -1, -1
         connected = False
         while searchq:
-            dist, major, minor = heappop(searchq)
-
-            if player == 1: # player 1 is travelling left-right, so the intended direction is the column number
-                row, col = minor, major
-            else:           # player 2 is travelling up-down, so the intended direction is the row number
-                row, col = major, minor
+            weight, row, col = heappop(searchq)
 
             # if the main axis is at 0, we've crossed the whole board
-            if major == 0:
+            if weight == 0:
                 connected = True
                 break
 
-            # cut the search if we've reached the max
-            if max and dist >= max:
-                break
             for dy, dx in ADJACENT:
                 next_row = row + dy
                 next_col = col + dx
-
-                # translate row/col to major/minor axis
-                if player == 1:
-                    major, minor = next_col, next_row
-                else:
-                    major, minor = next_row, next_col
 
                 # efficiency optimization. faster than checking if the cell is out of bounds
                 try:
@@ -152,27 +136,10 @@ class HexBoard:
                     # if the position is not a legal board position, move on. faster than calling in-bounds
                     continue
 
-                # owned cells extend the neighborhood to the rest of the bordering cells
+                # owned cells extend the path
                 if board_val == player and (next_row, next_col) not in parent:
                     parent[(next_row, next_col)] = (row, col)
-                    heappush(searchq, (dist, major, minor))
-                    if debug: dist_grid[next_row][next_col] = '0123456789ABCDEFGHIJKLMNOP'[dist]
-
-                # empty cells need to consider neighbors
-                elif board_val == 0 and (next_row, next_col) not in parent:
-                    # if we're neighboring a claimed cell, we dont need to consider other neighbors
-                    if row == self.size or col == self.size or self.board[row][col] == player:
-                        neighbor_count[next_row][next_col] = inf
-                    else:
-                        neighbor_count[next_row][next_col] += 1
-
-                    # if there are enough marked neighbors, we can search the cell
-                    if neighbor_count[next_row][next_col] >= min_neighbors:
-                        parent[(next_row, next_col)] = (row, col)
-                        heappush(searchq, (dist+1, major, minor))
-                        if debug: dist_grid[next_row][next_col] = '0123456789ABCDEFGHIJKLMNOP'[dist+1]
-
-        if debug: self.pretty_print(chars=dist_grid)
+                    heappush(searchq, (next_col if player == 1 else next_row, next_row, next_col))
 
         # once the search is finished, build the list of the shortest path
         if connected:
@@ -181,23 +148,20 @@ class HexBoard:
             while pos in parent:
                 winning_group.append(pos)
                 pos = parent[pos]
-            return dist, winning_group
-        # if the search ended because the max was exceeded, there is no winning group
-        elif max and dist >= max:
-            return dist, None
+            return winning_group
         # if there is no way to reach the other side, treat it as infinite distance
         else:
-            return inf, None
+            return None
 
     # checks if either player has won
     def _update_winner(self):
-        disconnected, group = self.remaining_distance(1, max=1)
-        if not disconnected:
+        group = self.is_connected(1)
+        if group:
             self._winner = 1
             self._winning_group = group
             return
-        disconnected, group = self.remaining_distance(-1, max=1)
-        if not disconnected:
+        group = self.is_connected(-1)
+        if group:
             self._winner = -1
             self._winning_group = group
             return
