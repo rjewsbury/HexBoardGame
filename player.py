@@ -55,6 +55,24 @@ class TextPlayer(HumanPlayer):
                 board.undo()
 
 
+class GuiPlayer(HumanPlayer):
+    def set_gui(self, gui):
+        self.gui = gui
+
+    def move(self, board):
+        move = self.gui.get_move(self.player_num)
+        if move == 'resign':
+            board.resign()
+            self.gui.reset_move()
+        elif move == 'undo':
+            board.undo()
+            board.undo()
+            self.gui.reset_move()
+        elif move is not None:
+            board.play(*move)
+            self.gui.reset_move()
+
+
 class RandomPlayer(ComputerPlayer):
     def move(self, board):
         options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
