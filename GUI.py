@@ -22,9 +22,9 @@ class Board:
     # Initialize the board piece images
     def __init__(self, frame):
         self.frame = frame
-        self.empty_space = PhotoImage(file="yellow_dot.png")
-        self.red_space = PhotoImage(file="red_dot.png")
-        self.blue_space = PhotoImage(file="blue_dot.png")
+        self.empty_space = PhotoImage(file="blank.png")
+        self.red_space = PhotoImage(file="red.png")
+        self.blue_space = PhotoImage(file="blue.png")
         self.draw_board()
 
     def draw_board(self):
