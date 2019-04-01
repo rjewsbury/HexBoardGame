@@ -10,7 +10,7 @@ from math import inf
 from timeit import default_timer
 
 from board import SWAP_MOVE
-from heuristic import ChargeHeuristic, ShortestPathHeuristic, TwoDistanceHeuristic, PastResultHeuristic
+from heuristic import ChargeHeuristic
 
 
 # a player interface
@@ -198,20 +198,23 @@ class AlphaBetaPlayer(ComputerPlayer):
         depth = 1
         val = 0
         move_list = None
-        while default_timer()-start_time < max_time:
+        time_up = False
+        while not time_up:
             transposition_table = dict()
             next_val, next_move_list, time_up = self.alpha_beta(board, depth, -inf, inf, self.player_num, transposition_table,
                                              sorter=sorter, start_time=start_time, max_time=max_time)
             print('depth',depth,'value',next_val,'moves',next_move_list, 'time up',time_up)
+
             # if the search at this depth actually completed, record the result
-            # keeping results of pratial searches may lead to strange moves
+            # keeping results of partial searches may lead to strange moves
             if not time_up:
                 val = next_val
                 move_list = next_move_list
                 # print(transposition_table.values())
                 depth += 1
-            # use the results from the previous step to sort this step
-            # sorter = PastResultHeuristic(transposition_table)
+            # if we've already used the majority of our time, we wont have time to complete another iteration
+            if (default_timer() - start_time) / (max_time) > 0.5:
+                time_up = True
         print('depth reached:',(depth-1))
         return val, move_list
 
