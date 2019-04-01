@@ -1,3 +1,5 @@
+from timeit import default_timer
+
 from board import HexBoard
 from heuristic import TwoDistanceHeuristic, ShortestPathHeuristic, ChargeHeuristic
 from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer
@@ -27,8 +29,8 @@ def text_game(use_default = False):
         player = [None]*3
     else:
         player = [None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size)),
-                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size))]
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), -1, max_time=30,sorter=ChargeHeuristic(size)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), -1, max_time=30, sorter=ChargeHeuristic(size))]
     for i in (1,-1):
         if player[i] is not None:
             continue
@@ -47,11 +49,18 @@ def text_game(use_default = False):
         elif player_type == 3:
             player[i] = ChargeHeuristicPlayer(i, size)
 
+    debug_heuristic = TwoDistanceHeuristic()
     board = HexBoard(size, swap)
     while board.winner == 0:
         board.pretty_print()
+        # debug_heuristic.get_value(board,True)
+
         print('Player', board.turn%3, 'to move')
+
+        start = default_timer()
         player[board.turn].move(board)
+
+        print('took %.2f seconds' % (default_timer()-start))
 
         # if both players are bots, slow down the game
         # if not (player[1].is_human() or player[2].is_human()):

@@ -66,12 +66,19 @@ class RandomPlayer(ComputerPlayer):
 
 # uses bounded min-max tree search with alpha beta pruning
 class AlphaBetaPlayer(ComputerPlayer):
-    def __init__(self, player_num, heuristic, search_depth=-1, max_time=0, sorter=None):
+    def __init__(self, player_num, heuristic, search_depth=-1, max_time=0, sorter=None, killer_moves=6):
         super(AlphaBetaPlayer, self).__init__(player_num)
+        # the number of moves deep to search in the tree
         self.search_depth = search_depth
+        # the amount of time given for iterative deepening. only used when search_depth < 0
         self.max_time = max_time
+        # the heuristic function used to evaluate leaf nodes
         self.heuristic = heuristic
+        # the sorting function used to determine which branch to search first
         self.sorter = sorter
+        # the number of cutoff moves to remember at each depth
+        self.killer_moves = killer_moves
+
         if search_depth < 0 and max_time <= 0:
             raise ValueError('AlphaBetaPlayer needs either a search_depth, or a max_time')
 
@@ -80,24 +87,28 @@ class AlphaBetaPlayer(ComputerPlayer):
         if self.search_depth < 0:
             val, move_list = self.iterative_deepening(board, self.max_time)
         else:
-            val, move_list = self.alpha_beta(board, self.search_depth, -inf, inf, self.player_num, transposition_table, self.sorter)
-        # val, move_list = self.MTD_f(board, self.heuristic.get_value(board)+self.player_num, self.search_depth)
+            val, move_list, time_up = self.alpha_beta(board, self.search_depth, -inf, inf, self.player_num, transposition_table, sorter=self.sorter)
+            # val, move_list = self.MTD_f(board, self.heuristic.get_value(board)+self.player_num, self.search_depth
+
         print('expected value:', val)
         print('expected moves:', move_list)
+
         # if the game seems lost, resign
         if move_list is None or val*self.player_num < -100:
             board.resign()
         else:
             board.play(*(move_list[0]))
-            # board.play(*(move_list[1][0]))
-            # self.heuristic.get_value(board, debug=True)
-            # board.undo()
 
     def alpha_beta(self, board, depth, alpha, beta, player, transposition_table,
-                   sorter=None, start_time=None, max_time=None):
+                   killer_moves=None, sorter=None, start_time=None, max_time=None):
+        if killer_moves is None:
+            killer_moves = [[(board.size//2,board.size//2)]*self.killer_moves for _ in range(depth+1)]
+        elif len(killer_moves) < depth:
+            killer_moves.extend(([(board.size//2,board.size//2)]*self.killer_moves for _ in range(depth+1-len(killer_moves))))
+
         if depth == 0 or board.winner != 0:
             # if we've reached the end, there is no move to make
-            return self.heuristic.get_value(board), None
+            return self.heuristic.get_value(board), None, False
 
         # make a generator for all options
         options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
@@ -111,55 +122,78 @@ class AlphaBetaPlayer(ComputerPlayer):
             child_val = sorter.get_child_values(board)
             options.sort(key=lambda m: 0 if m == SWAP_MOVE else child_val[m[0]][m[1]])
 
+        options = itertools.chain(killer_moves[depth], options)
+        searched = set()
+
         # player 1 tries to maximize the board value, player 2 tries to minimize it
         value = -inf if player == 1 else inf
         best_move = None
+        time_up = False
         for move in options:
+            if board[move[0]][move[1]] != 0 or move in searched:
+                continue
+            searched.add(move)
             board.play(*move)
             board_state = board.hashable()
             if transposition_table is not None:
                 if board_state in transposition_table:
                     move_val, move_list = transposition_table[board_state]
                 else:
-                    move_val, move_list = self.alpha_beta(board, depth-1, alpha, beta, -player,
-                                                  transposition_table, sorter, start_time, max_time)
-                    transposition_table[board_state] = (move_val, move_list)
+                    move_val, move_list, time_up =\
+                        self.alpha_beta(board, depth-1, alpha, beta, -player, transposition_table,
+                                        killer_moves=killer_moves, sorter=sorter, start_time=start_time, max_time=max_time)
+                    if not time_up:
+                        transposition_table[board_state] = (move_val, move_list)
             else:
-                move_val, move_list = self.alpha_beta(board, depth-1, alpha, beta, -player,
-                                              transposition_table, sorter, start_time, max_time)
-            if player > 0:
-                if move_val > value:
-                    value = move_val
-                    best_move = (move, move_list)
-                alpha = max(alpha, value)
-            else:
-                if move_val < value:
-                    value = move_val
-                    best_move = (move, move_list)
-                beta = min(beta, value)
+                move_val, move_list, time_up = self.alpha_beta(board, depth-1, alpha, beta, -player, transposition_table,
+                                                               killer_moves, sorter, start_time, max_time)
             board.undo()
-            # if we've found a better move, we can do a cutoff
-            if alpha >= beta:
+
+            # if we didnt run out of time, we successfully explored this branch
+            if not time_up:
+                if player > 0:
+                    if move_val > value:
+                        value = move_val
+                        best_move = (move, move_list)
+                    alpha = max(alpha, value)
+                else:
+                    if move_val < value:
+                        value = move_val
+                        best_move = (move, move_list)
+                    beta = min(beta, value)
+                # if we've found a better move, we can do a cutoff
+                if alpha >= beta:
+                    # record the move that caused the cutoff
+                    if move not in killer_moves[depth]:
+                        killer_moves[depth].append(move)
+                        killer_moves[depth].pop(0)
+                    break
+            # if we've run out of time, we need to get out of this tree search
+            if max_time and (time_up or (default_timer() - start_time > max_time)):
+                time_up = True
                 break
-            # if we've run out of time, we also need to do a cutoff
-            if max_time and (default_timer() - start_time > max_time):
-                break
-        return value, best_move
+        return value, best_move, time_up
 
     def iterative_deepening(self, board, max_time):
         start_time = default_timer()
-        sorter = None
-        depth = 0
+        sorter = self.sorter
+        depth = 1
         val = 0
         move_list = None
         while default_timer()-start_time < max_time:
             transposition_table = dict()
-            val, move_list = self.alpha_beta(board, depth, -inf, inf, self.player_num,
-                                        transposition_table, sorter, start_time, max_time)
-            # print(transposition_table.values())
-            depth += 1
+            next_val, next_move_list, time_up = self.alpha_beta(board, depth, -inf, inf, self.player_num, transposition_table,
+                                             sorter=sorter, start_time=start_time, max_time=max_time)
+            print('depth',depth,'value',next_val,'moves',next_move_list, 'time up',time_up)
+            # if the search at this depth actually completed, record the result
+            # keeping results of pratial searches may lead to strange moves
+            if not time_up:
+                val = next_val
+                move_list = next_move_list
+                # print(transposition_table.values())
+                depth += 1
             # use the results from the previous step to sort this step
-            sorter = PastResultHeuristic(transposition_table)
+            # sorter = PastResultHeuristic(transposition_table)
         print('depth reached:',(depth-1))
         return val, move_list
 
@@ -174,7 +208,7 @@ class AlphaBetaPlayer(ComputerPlayer):
         while lower < upper:
             bound = max(val, lower + 1)
             transposition_table = dict()
-            val, move_list = self.alpha_beta(board, depth, bound - 1, bound, self.player_num, transposition_table)
+            val, move_list, time_up = self.alpha_beta(board, depth, bound - 1, bound, self.player_num, transposition_table)
             if val < bound:
                 upper = val
             else:
