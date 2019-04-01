@@ -28,6 +28,30 @@ class Board:
         self.WIN_WIDTH = 2 * self.XPADDING + (3 * self.SIZE - 1) * self.IMG_SIZE
         self.draw_board()
 
+        # buttons
+        resign = Button(self.frame, text="resign", command=self.on_resign_click)
+        resign.place(anchor=SW, x=self.XPADDING, y = self.WIN_HEIGHT - self.YPADDING, width=50)
+        undo = Button(self.frame, text="undo", command=self.on_undo_click)
+        undo.place(anchor=SW, x=self.XPADDING + 70, y = self.WIN_HEIGHT - self.YPADDING, width=50)
+
+        # message label
+        self.message_string = StringVar(value="player ")
+        message = Label(self.frame, textvariable=self.message_string, justify=LEFT, font=("courier new", 15))
+        message.place(anchor=SW, x=self.XPADDING + 140, y = self.WIN_HEIGHT - self.YPADDING, width=self.WIN_WIDTH - 2 * self.XPADDING - 140)
+
+        # borders
+        Label(self.frame, background="#ED3838").place(x=10, y=10, width=self.IMG_SIZE * self.SIZE * 2, height=10)
+        self.frame.create_line(10, 80, self.IMG_SIZE * self.SIZE, 10 + self.IMG_SIZE * self.SIZE+50, fill="#323792", width=10)
+        Label(self.frame, background="#ED3838").place(x = 10,y=self.SIZE * self.IMG_SIZE * self.SIZE, width=self.IMG_SIZE * self.SIZE * 2, height=10)
+
+    def on_resign_click(self):
+        self.last_move = "resign"
+        self.last_move_player = self.hexBoard.turn
+
+    def on_undo_click(self):
+        self.last_move = "undo"
+        self.last_move_player = self.hexBoard.turn
+
     def draw_board(self):
         for row in range(0, self.hexBoard.size):
             j = row * self.SPACE_SIZE + self.XPADDING
@@ -49,6 +73,11 @@ class Board:
         for y in range(self.hexBoard.size):
             for x in range(self.hexBoard.size):
                 self.give_colour(y,x,self.hexBoard[y][x])
+
+        if self.hexBoard.winner != 0:
+            self.message_string.set('%s Player Wins!' % ('Blue' if self.hexBoard.winner == 1 else 'Red'))
+        else:
+            self.message_string.set("%s Player's turn to move" % ('Blue' if self.hexBoard.turn == 1 else 'Red'))
 
     def give_colour(self, y, x, player):
         widget = self.buttons[y][x]
@@ -73,17 +102,20 @@ class Board:
 
 class MainWindow:
     def __init__(self, window, HexBoard):
-        self.frame = Frame(window)
+        self.frame = Canvas(window)
         self.Board = Board(self.frame, HexBoard)
         self.frame.config(width=self.Board.WIN_WIDTH, height=self.Board.WIN_HEIGHT)
-        self.frame.pack()
 
+
+        self.frame.pack()
+        self.hexBoard = HexBoard
     # update the state of board cells, lets viewer know which turn it is
     def update(self):
         self.Board.update()
 
     # Wait for the player to do something, return that value
     def get_move(self, turn):
+        # TODO: set last player to buttons if clicked
         if turn == self.Board.last_move_player:
             return self.Board.last_move
         else:
