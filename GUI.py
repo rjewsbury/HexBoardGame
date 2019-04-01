@@ -2,11 +2,13 @@ from tkinter import *
 from board import *
 from player import GuiPlayer
 
-
+# GUI.py
+# Written by Caleigh
+# Modified by Caleigh and Ryley
 class Board:
     # Initialize the board piece images
-    def __init__(self, frame, HexBoard):
-        self.hexBoard = HexBoard
+    def __init__(self, frame, hex_board):
+        self.hexBoard = hex_board
         self.buttons = [[None]*self.hexBoard.size for i in range(self.hexBoard.size)]
         self.frame = frame
         # Images for the game spaces
@@ -33,9 +35,9 @@ class Board:
 
         # buttons
         resign = Button(self.frame, text="resign", command=self.on_resign_click)
-        resign.place(anchor=SW, x=self.XPADDING, y = self.WIN_HEIGHT - self.YPADDING, width=50)
+        resign.place(anchor=SW, x=self.XPADDING, y=self.WIN_HEIGHT - self.YPADDING, width=50)
         undo = Button(self.frame, text="undo", command=self.on_undo_click)
-        undo.place(anchor=SW, x=self.XPADDING + 70, y = self.WIN_HEIGHT - self.YPADDING, width=50)
+        undo.place(anchor=SW, x=self.XPADDING + 70, y=self.WIN_HEIGHT - self.YPADDING, width=50)
 
         # message label
         self.message_string = StringVar(value="Blue Player's turn to move")
@@ -72,25 +74,22 @@ class Board:
                 self.buttons[row][col] = label
                 label.pack()
                 label.image = self.empty_space
-                label.place(anchor=NW, x=j, y=self.YPADDING + row* self.SPACE_SIZE)
+                label.place(anchor=NW, x=j, y=self.YPADDING + row * self.SPACE_SIZE)
                 label.bind('<Button-1>', self.on_click_maker(row, col))
                 j += 2 * self.SPACE_SIZE
 
-#    def coords(self, widget):
-#        row = (widget.winfo_y() - self.YPADDING) / self.SPACE_SIZE
-#        col = (widget.winfo_x() - self.XPADDING - row * self.SPACE_SIZE) / (2 * self.SPACE_SIZE)
-#        return row + 1, col + 1
-
+    # Board gets players next move and updates itself with the correct space colours
     def update(self):
         for y in range(self.hexBoard.size):
             for x in range(self.hexBoard.size):
-                self.give_colour(y,x,self.hexBoard[y][x])
+                self.give_colour(y, x, self.hexBoard[y][x])
 
         if self.hexBoard.winner != 0:
             self.message_string.set('%s Player Wins!' % ('Blue' if self.hexBoard.winner == 1 else 'Red'))
         else:
             self.message_string.set("%s Player's turn to move" % ('Blue' if self.hexBoard.turn == 1 else 'Red'))
 
+    # Change the colour of a board piece
     def give_colour(self, y, x, player):
         widget = self.buttons[y][x]
         if player == -1:
@@ -106,28 +105,26 @@ class Board:
     def on_click_maker(self, y, x):
         def on_click(event):
             # record which button was last clicked
-            self.last_move = (y,x)
+            self.last_move = (y, x)
             # record which player's turn it was when the player clicked
             self.last_move_player = self.hexBoard.turn
         return on_click
 
 
+# The window containing the game board, continuously stays open
 class MainWindow:
-    def __init__(self, window, HexBoard):
+    def __init__(self, window, hex_board):
         self.frame = Canvas(window)
-        self.Board = Board(self.frame, HexBoard)
+        self.Board = Board(self.frame, hex_board)
         self.frame.config(width=self.Board.WIN_WIDTH, height=self.Board.WIN_HEIGHT)
-
-
         self.frame.pack()
-        self.hexBoard = HexBoard
+
     # update the state of board cells, lets viewer know which turn it is
     def update(self):
         self.Board.update()
 
     # Wait for the player to do something, return that value
     def get_move(self, turn):
-        # TODO: set last player to buttons if clicked
         if turn == self.Board.last_move_player:
             return self.Board.last_move
         else:
@@ -138,19 +135,21 @@ class MainWindow:
         self.Board.last_move_player = 0
 
 
-def main(HexBoard, player):
+# GUI main
+def main(hex_board, player):
     window = Tk()
     window.wm_title("Hex")
-    gameWindow = MainWindow(window, HexBoard)
+    game_window = MainWindow(window, hex_board)
     for i in (1, -1):
         if isinstance(player[i], GuiPlayer):
-            player[i].set_gui(gameWindow)
+            player[i].set_gui(game_window)
 
+    # Keep the main window updating
     def game_loop():
-        gameWindow.update()
-        player[HexBoard.turn].move(HexBoard)
-        gameWindow.update()
-        if HexBoard.winner == 0:
+        game_window.update()
+        player[hex_board.turn].move(hex_board)
+        game_window.update()
+        if hex_board.winner == 0:
             window.after(200, game_loop)
         else:
             # somebody won, show that.
@@ -159,15 +158,6 @@ def main(HexBoard, player):
     window.after(1000, game_loop)
     window.mainloop()
 
-
-if __name__ == "__main__":
-    main()
-# root.mainloop()  # keep the window up (infinite loop)
-
 # TODO
-# undo, resign buttons
-# winning screen
-# colours for sides
-# indicate whose turn it is
 # documentation
-# ask startup questions via GUI
+# ask startup questions via GUI instead of terminal
