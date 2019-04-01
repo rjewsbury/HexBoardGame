@@ -112,7 +112,7 @@ def gui_game(use_default = False):
             if not use_default:
                 size = int(input('Board size: '))
             else:
-                size = 11
+                size = 5
         except ValueError:
             pass
 

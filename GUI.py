@@ -40,21 +40,21 @@ class Board:
         # message label
         self.message_string = StringVar(value="Blue Player's turn to move")
         message = Label(self.frame, textvariable=self.message_string, justify=LEFT, font=("courier new", 15))
-        message.place(anchor=SW, x=self.XPADDING + 140, y = self.WIN_HEIGHT - self.YPADDING,
+        message.place(anchor=SW, x=self.XPADDING + 140, y=self.WIN_HEIGHT - self.YPADDING,
                       width=self.WIN_WIDTH - 2 * self.XPADDING - 140)
 
         # borders
         # top border
-        Label(self.frame, background="#ED3838").place(x=20, y=15, width=self.IMG_SIZE * self.SIZE * 2, height=10)
+        self.frame.create_line(30, 20, self.IMG_SIZE * self.SIZE * 2 + 20, 20, fill="#ED3838", width=10)
         # left border
-        self.frame.create_line(20, 60, self.IMG_SIZE * self.SIZE+10, self.WIN_HEIGHT-130, fill="#323792",
+        self.frame.create_line(20, 60, self.IMG_SIZE * self.SIZE + 10, self.WIN_HEIGHT-130, fill="#323792",
                                width=10)
         # right border
         self.frame.create_line(self.WIN_WIDTH - self.IMG_SIZE * self.SIZE-50, 30, self.WIN_WIDTH - 60,
                                self.WIN_HEIGHT-160, fill="#323792", width=10)
         # bottom border
-        Label(self.frame, background="#ED3838").place(x=40 + self.IMG_SIZE * self.SIZE, y=self.WIN_HEIGHT-120,
-                                                      width=self.IMG_SIZE * self.SIZE * 2, height=10)
+        self.frame.create_line(40 + self.IMG_SIZE * self.SIZE, self.WIN_HEIGHT - 115,
+                               self.WIN_WIDTH - self.XPADDING, self.WIN_HEIGHT - 115, fill="#ED3838", width=10)
 
     def on_resign_click(self):
         self.last_move = "resign"
