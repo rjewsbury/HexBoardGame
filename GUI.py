@@ -24,7 +24,7 @@ class Board:
         # button size DO NOT CHANGE EVER
         self.SPACE_SIZE = 35
         # Padding between window edges and buttons
-        self.XPADDING = 40
+        self.XPADDING = 70
         self.YPADDING = 40
         # Window height/width
         self.WIN_HEIGHT = 2 * self.YPADDING + self.SIZE * self.IMG_SIZE + 100
@@ -38,18 +38,22 @@ class Board:
         undo.place(anchor=SW, x=self.XPADDING + 70, y = self.WIN_HEIGHT - self.YPADDING, width=50)
 
         # message label
-        self.message_string = StringVar(value="player ")
+        self.message_string = StringVar(value="Blue Player's turn to move")
         message = Label(self.frame, textvariable=self.message_string, justify=LEFT, font=("courier new", 15))
         message.place(anchor=SW, x=self.XPADDING + 140, y = self.WIN_HEIGHT - self.YPADDING,
                       width=self.WIN_WIDTH - 2 * self.XPADDING - 140)
 
         # borders
-        Label(self.frame, background="#ED3838").place(x=10, y=15, width=self.IMG_SIZE * self.SIZE * 2, height=10)
-        self.frame.create_line(10, 70, self.IMG_SIZE * self.SIZE, 55 + self.IMG_SIZE * self.SIZE, fill="#323792",
+        # top border
+        Label(self.frame, background="#ED3838").place(x=20, y=15, width=self.IMG_SIZE * self.SIZE * 2, height=10)
+        # left border
+        self.frame.create_line(20, 60, self.IMG_SIZE * self.SIZE+10, self.WIN_HEIGHT-130, fill="#323792",
                                width=10)
-        self.frame.create_line(self.WIN_WIDTH - self.IMG_SIZE * self.SIZE-10, 30, self.WIN_WIDTH - 20,
+        # right border
+        self.frame.create_line(self.WIN_WIDTH - self.IMG_SIZE * self.SIZE-50, 30, self.WIN_WIDTH - 60,
                                self.WIN_HEIGHT-160, fill="#323792", width=10)
-        Label(self.frame, background="#ED3838").place(x=10 + self.IMG_SIZE * self.SIZE, y=self.WIN_HEIGHT-120,
+        # bottom border
+        Label(self.frame, background="#ED3838").place(x=40 + self.IMG_SIZE * self.SIZE, y=self.WIN_HEIGHT-120,
                                                       width=self.IMG_SIZE * self.SIZE * 2, height=10)
 
     def on_resign_click(self):
@@ -152,7 +156,7 @@ def main(HexBoard, player):
             # somebody won, show that.
             pass
 
-    window.after(200, game_loop)
+    window.after(1000, game_loop)
     window.mainloop()
 
 

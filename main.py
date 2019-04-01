@@ -30,8 +30,8 @@ def text_game(use_default = False):
         player = [None]*3
     else:
         player = [None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), -1, max_time=30,sorter=ChargeHeuristic(size)),
-                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), -1, max_time=30, sorter=ChargeHeuristic(size))]
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 3, max_time=30,sorter=ChargeHeuristic(size)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 3, max_time=30, sorter=ChargeHeuristic(size))]
     for i in (1,-1):
         if player[i] is not None:
             continue
@@ -112,7 +112,7 @@ def gui_game(use_default = False):
             if not use_default:
                 size = int(input('Board size: '))
             else:
-                size = 9
+                size = 11
         except ValueError:
             pass
 
@@ -132,8 +132,8 @@ def gui_game(use_default = False):
         player = [None]*3
     else:
         player = [None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size)),
-                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size))]
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 3, sorter=ChargeHeuristic(size)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 3, sorter=ChargeHeuristic(size))]
 
     for i in (1,-1):
         if player[i] is not None:
