@@ -100,6 +100,8 @@ class HexBoard:
     # sets the winner of the match
     def resign(self):
         self._winner = -self.turn
+        print('Player',self.turn,'resigned')
+        print('Winner is',self.winner)
 
     # checks if a player has made a connection between their walls
     def is_connected(self, player, debug=False):

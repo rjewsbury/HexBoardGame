@@ -2,8 +2,9 @@ from timeit import default_timer
 
 from board import HexBoard
 from heuristic import TwoDistanceHeuristic, ShortestPathHeuristic, ChargeHeuristic
-from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer
+from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer, GuiPlayer
 import time
+from GUI import main as gui_main
 
 
 def text_game(use_default = False):
@@ -104,10 +105,64 @@ def build_alpha_beta_player(player_num, size):
     return AlphaBetaPlayer(player_num, heuristic, search_depth, max_time, sorter)
 
 
+def gui_game(use_default = False):
+    size = -1
+    while size < 1:
+        try:
+            if not use_default:
+                size = int(input('Board size: '))
+            else:
+                size = 9
+        except ValueError:
+            pass
+
+    swap = False
+    while swap not in ('y', 'n'):
+        if not use_default:
+            swap = input('allow swap rule? (y/n): ')
+        else:
+            swap = 'n'
+    swap = (swap == 'y')
+
+    # Make the board
+    board = HexBoard(size, swap)
+
+
+    if not use_default:
+        player = [None]*3
+    else:
+        player = [None,
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(size))]
+
+    for i in (1,-1):
+        if player[i] is not None:
+            continue
+        player_type = -1
+        while not (0 <= player_type <= 3):
+            try:
+                player_type = int(input('0 - Text\n1 - GUI\n2 - Random (AI)\n3 - Alpha-Beta Search (AI)\n4 - Charge Heuristic (AI)\nplayer %d type?: ' % (i%3)))
+            except ValueError:
+                pass
+        if player_type == 0:
+            player[i] = TextPlayer(i)
+        elif player_type == 1:
+            player[i] = GuiPlayer(i)
+        elif player_type == 2:
+            player[i] = RandomPlayer(i)
+        elif player_type == 3:
+            player[i] = build_alpha_beta_player(i, size)
+        elif player_type == 4:
+            player[i] = ChargeHeuristicPlayer(i, size)
+
+    window = gui_main(board, player)
+
+
+
 def main():
-    # text_game()
-    import cProfile
-    cProfile.run('text_game(use_default=True)', sort='time')
+    gui_game(True)
+#    import cProfile
+#    cProfile.run('text_game(use_default=True)', sort='time')
 
 
 if __name__ == '__main__':
