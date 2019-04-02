@@ -114,7 +114,9 @@ class TwoDistanceHeuristic(Heuristic):
             # if a player does not have a 2-distance path, pick a high finite number, so we dont confuse it with a
             # definite win or a definite loss
             if math.isinf(val):
-                return math.copysign(10000, val)
+                val = int(math.copysign(100, val))
+                fallback = ShortestPathHeuristic()
+                val += fallback.get_value(board)
             if math.isnan(val):
                 # if neither player has a path to their opposite side, we get nan
                 # in this rare case, revert to normal distance
@@ -249,7 +251,7 @@ class ChargeHeuristic(Heuristic):
             k_e_w = ChargeHeuristic.curve(charge[y][x - 1], charge[y][x], charge[y][x + 1])
             k_ne_sw = ChargeHeuristic.curve(charge[y + 1][x - 1], charge[y][x], charge[y - 1][x + 1])
             k_nw_se = ChargeHeuristic.curve(charge[y + 1][x], charge[y][x], charge[y - 1][x])
-            curve[y - 1][x - 1] = min(k_e_w, k_ne_sw, k_nw_se) * max(k_e_w, k_ne_sw, k_nw_se)
+            curve[y - 1][x - 1] = min(k_e_w, k_ne_sw, k_nw_se) * max(k_e_w, k_ne_sw, k_nw_se)*-board.turn
             # print('%.3f'%curve[y-1][x-1], end=',' if x < board.size else '\n')
         return curve
 

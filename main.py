@@ -2,24 +2,38 @@ from timeit import default_timer
 
 from board import HexBoard
 from heuristic import TwoDistanceHeuristic, ShortestPathHeuristic, ChargeHeuristic
-from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer, GuiPlayer
+from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPlayer, GuiPlayer, MonteCarloPlayer
 import time
 from GUI import main as gui_main
 
 DEFAULTS = [
     None,
     {
+        'size': 11,
+        'swap': 'n',
+        'players': [None,
+                    AlphaBetaPlayer(1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11)),
+                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11))]
+    },
+    {
         'size':11,
         'swap':'n',
         'players':[None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11)),
+                  AlphaBetaPlayer(1, ShortestPathHeuristic(), max_time=20, sorter=ChargeHeuristic(11)),
                   AlphaBetaPlayer(-1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11))]
     },
     {
-        'size':6,
+        'size':11,
         'swap':'n',
         'players':[None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), 3, sorter=ChargeHeuristic(11)),
+                  MonteCarloPlayer(1, 11, max_time=5, sorter=ChargeHeuristic(11)),
+                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(11))]
+    },
+    {
+        'size':11,
+        'swap':'n',
+        'players':[None,
+                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), -1, max_time=30, sorter=ChargeHeuristic(11)),
                   GuiPlayer(-1)]
     },
 ]
@@ -148,4 +162,4 @@ def main(use_gui=True, default=0):
 
 
 if __name__ == '__main__':
-    main(False, 2)
+    main(False, 1)

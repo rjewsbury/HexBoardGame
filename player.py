@@ -6,10 +6,13 @@ Maybe these should be separated into their own files?
 import random
 import itertools
 from abc import ABC, abstractmethod
+from copy import deepcopy
+
+import math
 from math import inf
 from timeit import default_timer
 
-from board import SWAP_MOVE
+from board import SWAP_MOVE, HexBoard
 from heuristic import ChargeHeuristic
 
 
@@ -112,7 +115,7 @@ class AlphaBetaPlayer(ComputerPlayer):
         print('expected moves:', move_list)
 
         # if the game seems lost, resign
-        if move_list is None or val*self.player_num < -100:
+        if move_list is None or val*self.player_num <= -10000:
             board.resign()
         else:
             board.play(*(move_list[0]))
@@ -138,7 +141,7 @@ class AlphaBetaPlayer(ComputerPlayer):
         # it can try to find moves that will result in cut-offs early
         if sorter is not None:
             child_val = sorter.get_child_values(board)
-            options.sort(key=lambda m: 0 if m == SWAP_MOVE else child_val[m[0]][m[1]])
+            options.sort(key=lambda m: 0 if m == SWAP_MOVE else child_val[m[0]][m[1]]*-board.turn)
 
         options = itertools.chain(killer_moves[depth], options)
         searched = set()
@@ -213,7 +216,10 @@ class AlphaBetaPlayer(ComputerPlayer):
                 # print(transposition_table.values())
                 depth += 1
             # if we've already used the majority of our time, we wont have time to complete another iteration
-            if (default_timer() - start_time) / (max_time) > 0.5:
+            if (default_timer() - start_time) / (max_time) > 0.2:
+                time_up = True
+            # if we've found a definite result, no reason to keep searching
+            if abs(val) == math.inf:
                 time_up = True
         print('depth reached:',(depth-1))
         return val, move_list
@@ -237,6 +243,112 @@ class AlphaBetaPlayer(ComputerPlayer):
         return val, move_list
 
 
+class MonteCarloPlayer(ComputerPlayer):
+    def __init__(self, player_num, size, max_time=1, sorter=None, num_samples=100):
+        super(MonteCarloPlayer, self).__init__(player_num)
+        # the amount of time given for searching.
+        self.max_time = max_time
+        # the sorting function used to determine which branch to search first
+        self.sorter = sorter
+        # the number of rollouts to perform on a leaf node
+        self.num_samples = num_samples
+        # a list of board states, their visit count, and their children
+        self.search_tree = {HexBoard(size).hashable():[1,0,set()]}
+        # tunable exploration parameter for UCB
+        self.C = 1
+
+    def move(self, board):
+        if board.winner != 0:
+            return
+
+        start = default_timer()
+        count = 0
+        while default_timer()-start < self.max_time:
+            count += 1
+            self.MCTS(board)
+        print('completed',count,'searches!')
+        state = self.search_tree[board.hashable()]
+        best_move=None
+        best_visits = 0
+        for move in state[2]:
+            board.play(*move)
+            visits = self.search_tree[board.hashable()][0]
+            board.undo()
+            if visits > best_visits:
+                best_move, best_visits = move, visits
+        board.play(*best_move)
+
+    def MCTS(self, board):
+        state = board.hashable()
+        # if we're starting at a move we've never searched before, add it
+        if state not in self.search_tree:
+            # connect it to its parent node
+            if board.move_list:
+                move = board.move_list[-1]
+                board.undo()
+                self.search_tree[board.hashable()][2].add(move)
+                board.play(*move)
+            self.search_tree[state] = [1,0,set()]
+
+        tree_state = self.search_tree[state]
+        # increase the visit count
+        tree_state[0] += 1
+
+        if board.winner != 0:
+            tree_state[1] += board.turn * board.winner
+            return board.winner
+
+        options = {(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0}
+        unvisited = list(options.difference(tree_state[2]))
+        if not unvisited:
+            next_move = self.UCB(board, tree_state)
+            board.play(*next_move)
+            winner = self.MCTS(board)
+            board.undo()
+        else:
+            next_move = random.choice(unvisited)
+            tree_state[2].add(next_move)
+            board.play(*next_move)
+            self.search_tree[board.hashable()] = [1,0,set()]
+            winner = self.playout(deepcopy(board))
+            board.undo()
+        tree_state[1] += board.turn * winner
+        return winner
+
+    def UCB(self, board, state):
+        weights = []
+        children = list(state[2])
+        for next_move in children:
+            board.play(*next_move)
+            child_state = self.search_tree[board.hashable()]
+            board.undo()
+            weight = child_state[1] + self.C * (math.log(state[0])/child_state[0])**0.5
+            weights.append(weight)
+        return random.choices(children,weights)[0]
+
+    def playout(self, board):
+        while board.winner == 0:
+            options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
+            next_move = random.choice(options)
+            board.play(*next_move)
+        return board.winner
+
+    def board_eval(self, board, samples):
+        wins = 0
+        losses = 0
+        for i in range(samples):
+            rollout_board = deepcopy(board)
+            while rollout_board.winner == 0:
+                options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
+                move = random.choice(options)
+                rollout_board.play(*move)
+            if rollout_board.winner == board.turn:
+                wins += 1
+            else:
+                losses += 1
+        return (wins-losses)/(wins+losses)
+
+
 # this player is a mess. They try to find "saddle points" in the distance function
 # on the board to signify that
 class ChargeHeuristicPlayer(ComputerPlayer):
@@ -249,7 +361,7 @@ class ChargeHeuristicPlayer(ComputerPlayer):
         move = (-1, -1)
         move_curvature = inf
         for y, x in itertools.product(range(0,board.size), repeat=2):
-            if curve[y][x] < move_curvature and board[y][x] == 0:
+            if curve[y][x]*-board.turn < move_curvature and board[y][x] == 0:
                 move = (y,x)
-                move_curvature = curve[y][x]
+                move_curvature = curve[y][x]*-board.turn
         board.play(*move)
