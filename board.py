@@ -100,8 +100,8 @@ class HexBoard:
     # sets the winner of the match
     def resign(self):
         self._winner = -self.turn
-        print('Player',self.turn,'resigned')
-        print('Winner is',self.winner)
+        # print('Player',self.turn%3,'resigned')
+        # print('Winner is',self.winner%3)
 
     # checks if a player has made a connection between their walls
     def is_connected(self, player, debug=False):
@@ -171,6 +171,7 @@ class HexBoard:
         self._winner = 0
         self._winning_group = None
 
+    # draws a nice looking ascii board
     def pretty_print(self, chars=None):
         # spacing should be odd for things to be consistent
         spacing = 3

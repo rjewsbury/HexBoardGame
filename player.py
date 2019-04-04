@@ -44,6 +44,7 @@ class ComputerPlayer(Player, ABC):
         return False
 
 
+# a human player that gets moves from the terminal
 class TextPlayer(HumanPlayer):
     def move(self, board):
         user = input('row, col (or "resign"/"undo"): ')
@@ -58,6 +59,7 @@ class TextPlayer(HumanPlayer):
                 board.undo()
 
 
+#a human player that gets move locations from a gui
 class GuiPlayer(HumanPlayer):
     def set_gui(self, gui):
         self.gui = gui
@@ -76,6 +78,7 @@ class GuiPlayer(HumanPlayer):
             self.gui.reset_move()
 
 
+# a player that chooses moves randomly
 class RandomPlayer(ComputerPlayer):
     def move(self, board):
         options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
@@ -195,6 +198,7 @@ class AlphaBetaPlayer(ComputerPlayer):
                 break
         return value, best_move, time_up
 
+    # performs alphabeta searches at increasing depths to allow a time limit on each move
     def iterative_deepening(self, board, max_time):
         start_time = default_timer()
         sorter = self.sorter
@@ -226,7 +230,7 @@ class AlphaBetaPlayer(ComputerPlayer):
 
     # a supposed efficiency improvement on the minimax search algorithm that uses 0-width alpha beta calls
     # makes the players choose different moves than regular alpha-beta depending on the initial guess?
-    # might not use.
+    # might not use, as it changes results
     def MTD_f(self, board, guess, depth):
         upper = inf
         lower = -inf
@@ -242,14 +246,14 @@ class AlphaBetaPlayer(ComputerPlayer):
                 lower = val
         return val, move_list
 
-
+# a player that uses Monte Carlo Tree Search as opposed to the minimax search that AlphaBetaPlayer uses
+# Currently this player uses pure MCTS, meaning that rollouts are done randomly. This means that the
+# player does not take advantage of any of the heuristics to evaluate positions, and does not play very well
 class MonteCarloPlayer(ComputerPlayer):
-    def __init__(self, player_num, size, max_time=1, sorter=None, num_samples=100):
+    def __init__(self, player_num, size, max_time=1, num_samples=100):
         super(MonteCarloPlayer, self).__init__(player_num)
         # the amount of time given for searching.
         self.max_time = max_time
-        # the sorting function used to determine which branch to search first
-        self.sorter = sorter
         # the number of rollouts to perform on a leaf node
         self.num_samples = num_samples
         # a list of board states, their visit count, and their children
@@ -261,12 +265,15 @@ class MonteCarloPlayer(ComputerPlayer):
         if board.winner != 0:
             return
 
+        # perform searches for the given amount of time
         start = default_timer()
         count = 0
         while default_timer()-start < self.max_time:
             count += 1
             self.MCTS(board)
         print('completed',count,'searches!')
+
+        # from the given board state, pick the child with the most visits
         state = self.search_tree[board.hashable()]
         best_move=None
         best_visits = 0
@@ -294,18 +301,22 @@ class MonteCarloPlayer(ComputerPlayer):
         # increase the visit count
         tree_state[0] += 1
 
+        # if this is a winning state, mark it as a win and back-propagate
         if board.winner != 0:
             tree_state[1] += board.turn * board.winner
             return board.winner
 
+        # if this isnt a final state, expand the monte carlo tree to more nodes
         options = {(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0}
         unvisited = list(options.difference(tree_state[2]))
+        # if we've visited every child, move to one based on UCB
         if not unvisited:
             next_move = self.UCB(board, tree_state)
             board.play(*next_move)
             winner = self.MCTS(board)
             board.undo()
         else:
+            # if there are unexplored children, search one
             next_move = random.choice(unvisited)
             tree_state[2].add(next_move)
             board.play(*next_move)
@@ -315,6 +326,7 @@ class MonteCarloPlayer(ComputerPlayer):
         tree_state[1] += board.turn * winner
         return winner
 
+    # returns a move based on a weighted distribution
     def UCB(self, board, state):
         weights = []
         children = list(state[2])
@@ -326,6 +338,7 @@ class MonteCarloPlayer(ComputerPlayer):
             weights.append(weight)
         return random.choices(children,weights)[0]
 
+    # plays random moves from a board state to see who wins
     def playout(self, board):
         while board.winner == 0:
             options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
@@ -333,16 +346,14 @@ class MonteCarloPlayer(ComputerPlayer):
             board.play(*next_move)
         return board.winner
 
+    # performs multiple playouts and averages them
     def board_eval(self, board, samples):
         wins = 0
         losses = 0
         for i in range(samples):
             rollout_board = deepcopy(board)
-            while rollout_board.winner == 0:
-                options = [(y, x) for (y, x) in itertools.product(range(board.size), repeat=2) if board[y][x] == 0]
-                move = random.choice(options)
-                rollout_board.play(*move)
-            if rollout_board.winner == board.turn:
+            winner = self.playout(rollout_board)
+            if winner == board.turn:
                 wins += 1
             else:
                 losses += 1
@@ -350,7 +361,7 @@ class MonteCarloPlayer(ComputerPlayer):
 
 
 # this player is a mess. They try to find "saddle points" in the distance function
-# on the board to signify that
+# on the board to signify that a move is contested by both players
 class ChargeHeuristicPlayer(ComputerPlayer):
     def __init__(self, player_num, board_size):
         super(ChargeHeuristicPlayer, self).__init__(player_num)

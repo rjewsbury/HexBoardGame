@@ -6,35 +6,43 @@ from player import TextPlayer, RandomPlayer, AlphaBetaPlayer, ChargeHeuristicPla
 import time
 from GUI import main as gui_main
 
+# preset settings for demonstrating the project
 DEFAULTS = [
     None,
     {
         'size': 11,
         'swap': 'n',
         'players': [None,
-                    AlphaBetaPlayer(1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11)),
-                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11))]
+                    AlphaBetaPlayer(1, ShortestPathHeuristic(), 2, sorter=ChargeHeuristic(11)),
+                    AlphaBetaPlayer(-1, ShortestPathHeuristic(), 2, sorter=ChargeHeuristic(11))]
+    },
+    {
+        'size': 11,
+        'swap': 'n',
+        'players': [None,
+                    AlphaBetaPlayer(1, TwoDistanceHeuristic(), 2),
+                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2)]
     },
     {
         'size':11,
         'swap':'n',
-        'players':[None,
-                  AlphaBetaPlayer(1, ShortestPathHeuristic(), max_time=20, sorter=ChargeHeuristic(11)),
-                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), max_time=20, sorter=ChargeHeuristic(11))]
+        'players': [None,
+                    AlphaBetaPlayer(1, ShortestPathHeuristic(), 2, sorter=ChargeHeuristic(11)),
+                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(11))]
+    },
+    {
+        'size': 7,
+        'swap': 'n',
+        'players': [None,
+                    GuiPlayer(1),
+                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 3, sorter=ChargeHeuristic(7))]
     },
     {
         'size':11,
         'swap':'n',
-        'players':[None,
-                  MonteCarloPlayer(1, 11, max_time=5, sorter=ChargeHeuristic(11)),
-                  AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(11))]
-    },
-    {
-        'size':11,
-        'swap':'n',
-        'players':[None,
-                  AlphaBetaPlayer(1, TwoDistanceHeuristic(), -1, max_time=30, sorter=ChargeHeuristic(11)),
-                  GuiPlayer(-1)]
+        'players': [None,
+                    GuiPlayer (1),
+                    AlphaBetaPlayer(-1, TwoDistanceHeuristic(), 2, sorter=ChargeHeuristic(11))]
     },
 ]
 
@@ -66,11 +74,11 @@ def text_get_rules(default=0):
         if player[i] is not None:
             continue
         player_type = -1
-        while not (0 <= player_type <= 3):
+        while not (0 <= player_type <= 5):
             try:
                 player_type = int(input(
                     '0 - Text\n1 - Gui\n2 - Random (AI)\n3 - Alpha-Beta Search (AI)\n'
-                    '4 - Charge Heuristic (AI)\nplayer %d type?: ' % (
+                    '4 - Monte-Carlo Search (AI)\n5 - Charge Heuristic (AI)\nplayer %d type?: ' % (
                                 i % 3)))
             except ValueError:
                 pass
@@ -83,6 +91,8 @@ def text_get_rules(default=0):
         elif player_type == 3:
             player[i] = build_alpha_beta_player(i, size)
         elif player_type == 4:
+            player[i] = build_monte_carlo_player(i, size)
+        elif player_type == 5:
             player[i] = ChargeHeuristicPlayer(i, size)
 
     board = HexBoard(size, swap)
@@ -123,13 +133,23 @@ def build_alpha_beta_player(player_num, size):
     return AlphaBetaPlayer(player_num, heuristic, search_depth, max_time, sorter)
 
 
+def build_monte_carlo_player(player_num, size):
+    max_time = -1
+    while max_time < 0:
+        try:
+            max_time = int(input('max time per move?: '))
+        except ValueError:
+            pass
+    return MonteCarloPlayer(player_num, size, max_time)
+
+
 def text_game(board, player):
-    debug_heuristic = TwoDistanceHeuristic()
+    debug_heuristic = ChargeHeuristic(board.size)
     while board.winner == 0:
         board.pretty_print()
-        # debug_heuristic.get_value(board,True)
+        debug_heuristic.get_child_values(board,True)
 
-        print('Player', board.turn%3, 'to move')
+        print('Player', board.turn%3, 'to move', '●' if board.turn > 0 else '○')
 
         start = default_timer()
         player[board.turn].move(board)
@@ -162,4 +182,15 @@ def main(use_gui=True, default=0):
 
 
 if __name__ == '__main__':
-    main(False, 1)
+    use_gui = 0
+    while use_gui not in ('y', 'n'):
+        use_gui = input('use gui? (y/n): ')
+    use_gui = (use_gui == 'y')
+
+    preset = -1
+    while not (0 <= preset < len(DEFAULTS)):
+        try:
+            preset = int(input('Preset number 1-%d? (0 for custom):' % (len(DEFAULTS) - 1)))
+        except ValueError:
+            pass
+    main(use_gui, preset)

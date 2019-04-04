@@ -4,7 +4,7 @@ used by players to evaluate board positions
 """
 import itertools
 import math
-from abc import ABC, abstractmethod
+from abc import ABC
 from copy import deepcopy
 from heapq import heappush, heappop
 from math import inf
@@ -12,6 +12,7 @@ from math import inf
 from board import SWAP_MOVE, ADJACENT
 
 
+# a heuristic interface
 class Heuristic(ABC):
     # gets the value of a given board state
     # if a player has won, the board value is maximally positive or negative
@@ -39,6 +40,8 @@ class Heuristic(ABC):
         return heuristic
 
 
+# finds out which player has fewer moves remaining
+# in the shortest straight-line path across the board
 class ShortestPathHeuristic(Heuristic):
     def get_value(self, board, debug=False):
         if board.winner != 0:
@@ -102,6 +105,8 @@ class ShortestPathHeuristic(Heuristic):
             return inf
 
 
+# finds out which player has the shorter remaining path using "Two Distance"
+# which picks the second best options as it moves across the board
 class TwoDistanceHeuristic(Heuristic):
     def get_value(self, board, debug=False):
         if board.winner != 0:
@@ -194,6 +199,7 @@ class TwoDistanceHeuristic(Heuristic):
             return inf
 
 
+# unused class. Supposed to remember values from previous searches to aid search
 class PastResultHeuristic(Heuristic):
     def __init__(self, results, fallback=None):
         self.results = results
@@ -209,6 +215,8 @@ class PastResultHeuristic(Heuristic):
             return super(PastResultHeuristic, self).get_value(board)
 
 
+# Treats stones as positive/negative charges, and tries to find sadle points in the field
+# supposed to represent choosing contested moves
 class ChargeHeuristic(Heuristic):
     _max_charge = 9
 
