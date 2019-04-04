@@ -99,6 +99,7 @@ def text_get_rules(default=0):
     return board, player
 
 
+# Alpha-Beta is our main AI, and it can be customized to combine different heuristics and time limits
 def build_alpha_beta_player(player_num, size):
     heuristic_type = -1
     heuristic = None
@@ -139,6 +140,8 @@ def build_alpha_beta_player(player_num, size):
     return AlphaBetaPlayer(player_num, heuristic, search_depth, max_time, sorter, killer_moves)
 
 
+# Unused monte-carlo player builder - This method is staying for potential future development (if we ever add a monte-
+# carlo algorithm)
 def build_monte_carlo_player(player_num, size):
     max_time = -1
     while max_time < 0:
@@ -149,6 +152,7 @@ def build_monte_carlo_player(player_num, size):
     return MonteCarloPlayer(player_num, size, max_time)
 
 
+# Text-based UI
 def text_game(board, player):
     debug_heuristic = ChargeHeuristic(board.size)
     while board.winner == 0:

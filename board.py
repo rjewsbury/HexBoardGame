@@ -11,6 +11,7 @@ SWAP_MOVE = (-1, -1)
 ADJACENT = [(-1, 0), (0, -1), (1, -1), (1, 0), (0, 1), (-1, 1)]
 
 
+# This class is an abstract model for the hex board that can store information
 class HexBoard:
     def __init__(self, size=11, swap_rule=False):
         # the width and height of the board

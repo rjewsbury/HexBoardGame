@@ -1,10 +1,16 @@
+"""
+GUI.py
+Written by Caleigh
+Modified by Caleigh and Ryley
+This file handles all visuals and user input
+"""
+
 from tkinter import *
-from board import *
 from player import GuiPlayer
 
-# GUI.py
-# Written by Caleigh
-# Modified by Caleigh and Ryley
+
+# Board class
+# Deals with drawing the game board and all its spaces and their colours, to be placed inside the window class
 class Board:
     # Initialize the board piece images
     def __init__(self, frame, hex_board):
@@ -15,15 +21,13 @@ class Board:
         self.empty_space = PhotoImage(file="blank.png")
         self.red_space = PhotoImage(file="red.png")
         self.blue_space = PhotoImage(file="blue.png")
-
+        # Initialize the remembered moves
         self.last_move = None
         self.last_move_player = 0
-
-        # size - to be added in method call when added to ryley's game
         # Square this to get the amount of spaces on the board
         self.SIZE = self.hexBoard.size
         self.IMG_SIZE = 35
-        # button size DO NOT CHANGE EVER
+        # button size DO NOT CHANGE EVER!!!
         self.SPACE_SIZE = 35
         # Padding between window edges and buttons
         self.XPADDING = 70
@@ -31,21 +35,22 @@ class Board:
         # Window height/width
         self.WIN_HEIGHT = 2 * self.YPADDING + self.SIZE * self.IMG_SIZE + 100
         self.WIN_WIDTH = 2 * self.XPADDING + (3 * self.SIZE - 1) * self.IMG_SIZE
+
         self.draw_board()
 
-        # buttons
+        # Resign and undo buttons
         resign = Button(self.frame, text="resign", command=self.on_resign_click)
         resign.place(anchor=SW, x=self.XPADDING, y=self.WIN_HEIGHT - self.YPADDING, width=50)
         undo = Button(self.frame, text="undo", command=self.on_undo_click)
         undo.place(anchor=SW, x=self.XPADDING + 70, y=self.WIN_HEIGHT - self.YPADDING, width=50)
 
-        # message label
+        # message label - declares the current turn or the winner of the game
         self.message_string = StringVar(value="Blue Player's turn to move")
         message = Label(self.frame, textvariable=self.message_string, justify=LEFT, font=("courier new", 15))
         message.place(anchor=SW, x=self.XPADDING + 140, y=self.WIN_HEIGHT - self.YPADDING,
                       width=self.WIN_WIDTH - 2 * self.XPADDING - 140)
 
-        # borders
+        # borders:
         # top border
         self.frame.create_line(30, 20, self.IMG_SIZE * self.SIZE * 2 + 20, 20, fill="#ED3838", width=10)
         # left border
@@ -58,14 +63,18 @@ class Board:
         self.frame.create_line(40 + self.IMG_SIZE * self.SIZE, self.WIN_HEIGHT - 115,
                                self.WIN_WIDTH - self.XPADDING, self.WIN_HEIGHT - 115, fill="#ED3838", width=10)
 
+    # The below methods deal with button handling for undo and resign
+    # resign
     def on_resign_click(self):
         self.last_move = "resign"
         self.last_move_player = self.hexBoard.turn
 
+    # undo
     def on_undo_click(self):
         self.last_move = "undo"
         self.last_move_player = self.hexBoard.turn
 
+    # Now put everything together!
     def draw_board(self):
         for row in range(0, self.hexBoard.size):
             j = row * self.SPACE_SIZE + self.XPADDING
@@ -102,6 +111,8 @@ class Board:
             widget.config(image=self.empty_space)
             widget.image = self.empty_space
 
+    # on_click_maker allows us to pass parameters to a button's on-click event so that we can modify variables
+    # outside scope
     def on_click_maker(self, y, x):
         def on_click(event):
             # record which button was last clicked
@@ -157,7 +168,3 @@ def main(hex_board, player):
 
     window.after(1000, game_loop)
     window.mainloop()
-
-# TODO
-# documentation
-# ask startup questions via GUI instead of terminal
