@@ -130,7 +130,13 @@ def build_alpha_beta_player(player_num, size):
                 max_time = int(input('time per move?: '))
             except ValueError:
                 pass
-    return AlphaBetaPlayer(player_num, heuristic, search_depth, max_time, sorter)
+    killer_moves = -1
+    while killer_moves < 0:
+        try:
+            killer_moves = int(input('number of killer-moves?: '))
+        except ValueError:
+            pass
+    return AlphaBetaPlayer(player_num, heuristic, search_depth, max_time, sorter, killer_moves)
 
 
 def build_monte_carlo_player(player_num, size):
